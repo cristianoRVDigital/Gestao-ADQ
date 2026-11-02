@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101c1b">
+    <meta name="description" content="RV Digital — plataforma de gestão, produção e saúde da operação ADQ.">
+    <title>RV Digital — Gestão de ADQ</title>
+    <link rel="icon" href="data:,">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="sidebar-scrim" id="sidebar-scrim"></div>
+      <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <a class="brand" href="#/overview" aria-label="RV Digital, página inicial">
+          <span class="brand-mark">V</span>
+          <span class="brand-copy"><strong>RV DIGITAL</strong><small>GESTÃO DE ADQ</small></span>
+        </a>
+        <button class="workspace-switch" id="workspace-switch" type="button">
+          <span class="workspace-icon">◎</span>
+          <span><small>WORKSPACE</small><strong>Operação Brasil</strong></span>
+          <span class="chevron">⌄</span>
+        </button>
+        <nav class="side-nav">
+          <span class="nav-label">OPERAÇÃO</span>
+          <a href="#/overview" class="nav-item" data-route="overview"><span class="nav-icon">◫</span>Visão executiva</a>
+          <a href="#/teams" class="nav-item" data-route="teams"><span class="nav-icon">◉</span>Mesas de supervisão</a>
+          <a href="#/portfolio" class="nav-item" data-route="portfolio"><span class="nav-icon">▤</span><span>Carteira de clientes</span><span class="nav-count">1.286</span></a>
+          <a href="#/production" class="nav-item" data-route="production"><span class="nav-icon">⌁</span>Produção mensal</a>
+          <span class="nav-label nav-label-spaced">GOVERNANÇA</span>
+          <a href="#/imports" class="nav-item" data-route="imports"><span class="nav-icon">⇧</span><span>Importações</span><span class="nav-count">3</span></a>
+          <a href="#/audit" class="nav-item" data-route="audit"><span class="nav-icon">◷</span>Auditoria</a>
+          <a href="#/settings" class="nav-item" data-route="settings"><span class="nav-icon">⚙</span>Configurações</a>
+          <a href="#/health" class="nav-item health-nav" data-route="health"><span class="health-dot"></span><span>Saúde da base</span><strong>81,4%</strong></a>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="sidebar-tip">
+            <span class="tip-icon">✳</span>
+            <strong>Operação saudável</strong>
+            <span>81,4% da base está ativa e transacionando.</span>
+            <a href="#/health">Ver diagnóstico <span>↗</span></a>
+          </div>
+          <button class="profile-button" id="profile-button" type="button">
+            <span class="avatar avatar-dark">AN</span>
+            <span class="profile-copy"><strong>Administração</strong><small>Acesso completo</small></span>
+            <span class="chevron">···</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-shell">
+        <header class="topbar">
+          <button class="icon-button mobile-menu" id="mobile-menu" type="button" aria-label="Abrir menu">☰</button>
+          <div class="breadcrumb"><span>Operação Brasil</span><span class="breadcrumb-separator">/</span><strong id="breadcrumb-current">Visão executiva</strong></div>
+          <div class="topbar-actions">
+            <span class="today-label" id="today-label"></span>
+            <button class="icon-button notification-button" type="button" aria-label="Notificações" id="notifications-button"><span>♧</span><i></i></button>
+            <span class="topbar-divider"></span>
+            <span class="avatar avatar-light">AN</span>
+            <button class="topbar-user" type="button" id="topbar-user"><strong>Administração</strong><small>Administrador</small></button>
+            <button class="icon-button topbar-more" type="button" aria-label="Mais opções">⌄</button>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <div class="page-heading" id="page-heading"></div>
+          <section class="global-filters" aria-label="Filtros globais">
+            <div class="filter-caption"><span class="filter-caption-icon">☷</span><span>FILTROS GLOBAIS</span></div>
+            <label class="filter-select"><span class="sr-only">Período</span><select id="date-filter"><option value="current">01 nov — 02 nov 2026</option><option value="previous">01 out — 31 out 2026</option><option value="90">Últimos 90 dias</option></select></label>
+            <span class="filter-divider"></span>
+            <label class="filter-select team-filter"><span class="sr-only">Mesa</span><select id="team-filter"><option value="all">Todas as mesas</option><option value="Mesa 1">Mesa 1</option><option value="Mesa 2">Mesa 2</option><option value="Mesa 3">Mesa 3</option></select></label>
+            <button class="filter-more" id="more-filters" type="button">Mais filtros <span class="filter-badge" id="filter-badge">2</span></button>
+            <div class="filter-popover hidden" id="filter-popover">
+              <strong>Filtros adicionais</strong>
+              <label>Fornecedor<select id="supplier-filter"><option value="all">Todos os fornecedores</option><option>Paguebank</option><option>Stone</option><option>RV Pay</option></select></label>
+              <label>Situação<select id="status-filter"><option value="all">Todas as situações</option><option>Ativa</option><option>Atenção</option><option>Inoperante</option><option>Aguardando primeira venda</option><option>Sem ADQ</option></select></label>
+              <button class="button button-small button-dark" id="clear-filters" type="button">Limpar filtros</button>
+            </div>
+          </section>
+          <section id="page-content" aria-live="polite"></section>
+          <footer class="page-footer"><span><strong>RV Digital</strong> · Gestão de ADQ</span><span>Dados demonstrativos · Base atualizada em <span id="footer-date">02/11/2026</span></span></footer>
+        </div>
+      </main>
+    </div>
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+    <div id="modal-root"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
