@@ -15,7 +15,7 @@ Abra `index.html` no navegador ou sirva a pasta com qualquer servidor HTTP está
 
 - Painel executivo, equipes, carteira, produção, importações, auditoria, configurações e saúde da base.
 - Pesquisa e filtros de clientes, cadastro local e detalhes de PDV.
-- Importação com validação e prévia de arquivos CSV e XLSX; registros e configurações são guardados no `localStorage` do navegador.
+- Importação de CSV/XLSX em etapas reais de mapeamento de colunas, validação, prévia e confirmação; registros e configurações são guardados no `localStorage` do navegador.
 - Exportação CSV de carteira, produção, auditoria e diagnóstico.
 - Layout responsivo para desktop, tablet e celular.
 

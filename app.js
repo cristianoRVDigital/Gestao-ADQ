@@ -59,6 +59,18 @@
     health: ["Saúde da base", "SAÚDE OPERACIONAL", "Identifique clientes que precisam de atenção e recupere o potencial da carteira."]
   };
   const labels = ["Todos", "Com ADQ", "Sem ADQ", "Ativa", "Sem movimentação", "Inoperante", "Múltiplas ADQs", "Nova no mês"];
+  const importFields = [
+    { key: "name", label: "Cliente / estabelecimento", required: true, aliases: ["cliente", "estabelecimento", "razao social", "nome fantasia", "nome"] },
+    { key: "code", label: "Código do PDV", required: true, aliases: ["codigo pdv", "codigo", "pdv", "documento", "cnpj"] },
+    { key: "city", label: "Cidade", aliases: ["cidade", "municipio"] },
+    { key: "owner", label: "Responsável", aliases: ["responsavel", "vendedor"] },
+    { key: "team", label: "Mesa / equipe", aliases: ["mesa", "equipe"] },
+    { key: "adqs", label: "Quantidade de ADQs", aliases: ["adq", "terminal", "quantidade"] },
+    { key: "status", label: "Situação", aliases: ["situacao", "status"] },
+    { key: "supplier", label: "Fornecedor", aliases: ["fornecedor", "adquirente"] },
+    { key: "tpv", label: "TPV do mês", aliases: ["tpv", "volume"] },
+    { key: "last", label: "Última transação", aliases: ["ultima transacao", "transacao mais recente"] }
+  ];
   const state = {
     route: "overview", team: "all", period: "current", supplier: "all", status: "all", portfolioFilter: "Todos",
     search: "", page: 1, pageSize: 8, protocols: load("rvadq.protocols", initialProtocols), extraClients: load("rvadq.clients", []),
@@ -80,6 +92,7 @@
   }
   const fmtMoney = (value) => value === 0 ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
   const fmtNum = (value) => new Intl.NumberFormat("pt-BR").format(value);
+  const countLabel = (value, singular, plural) => `${value} ${value === 1 ? singular : plural}`;
   const initials = (name) => String(name || "RV").trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   const statusClass = (status) => ({ "Ativa": "status-active", "Atenção": "status-attention", "Inoperante": "status-inactive", "Aguardando primeira venda": "status-waiting", "Sem ADQ": "status-noadq" })[status] || "status-noadq";
   const statusPill = (status) => `<span class="status-pill ${statusClass(status)}">${escapeHtml(status)}</span>`;
@@ -208,10 +221,26 @@
   }
   function metric(label,value,change) { return `<div class="metric-panel"><span>${label}</span><strong>${value}</strong><small>${change}</small></div>`; }
   function renderImports() {
-    return `<div class="import-steps">${["Selecionar arquivo","Mapear colunas","Revisar","Confirmar"].map((step,i)=>`<div class="import-step ${i===0?"active":""}" data-step="${i+1}"><span>${i+1}</span>${step}</div>`).join("")}</div>
-    <div class="import-layout"><section class="panel"><div class="panel-head"><div><div class="section-label">IMPORTAR BASE</div><h2 class="section-title">Atualize os dados da operação</h2><p class="section-subtitle">Selecione uma planilha Excel ou CSV para iniciar a importação.</p></div></div><div class="panel-content"><div class="drop-zone" id="drop-zone"><span class="upload-icon">⇧</span><strong>Solte seu arquivo aqui</strong><p>ou clique para buscar no computador<br><strong>Formatos aceitos: XLSX ou CSV · até 50 MB</strong></p><button class="button button-outline" data-action="choose-file">Escolher arquivo</button><input id="import-file" class="file-input" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div id="import-preview"></div></div></section>
-    <section class="panel"><div class="panel-head"><div><div class="section-label">REGRAS PROTEGIDAS</div><h2 class="section-title">Importar sem perder contexto</h2><p class="section-subtitle">Rastreabilidade e segurança em todas as etapas.</p></div></div><div class="panel-content"><div class="rule-list"><div class="rule-item"><span class="rule-check">✓</span><span><strong>Deduplicação por ID do terminal</strong>Registros existentes são atualizados sem duplicar clientes.</span></div><div class="rule-item"><span class="rule-check">✓</span><span><strong>Cópia do arquivo original</strong>O protocolo registra nome e horário do processamento.</span></div><div class="rule-item"><span class="rule-check">✓</span><span><strong>Relatório de erros para reprocesso</strong>Linhas inválidas ficam identificadas na prévia.</span></div><div class="rule-item"><span class="rule-check">✓</span><span><strong>Protocolo e trilha de auditoria</strong>Cada alteração é registrada para consulta.</span></div></div></div></section></div>
+    const activeStep=state.importedRows?.stage===4?4:state.importedRows?.stage===3?3:state.importedRows?.stage===2?2:1;
+    return `<div class="import-steps">${["Selecionar arquivo","Mapear colunas","Revisar dados","Concluir"].map((step,i)=>`<div class="import-step ${i+1<activeStep?"done":""} ${i+1===activeStep?"active":""}" data-step="${i+1}"><span>${i+1<activeStep?"✓":i+1}</span>${step}</div>`).join("")}</div>
+    <div class="import-layout"><section class="panel"><div class="panel-head"><div><div class="section-label">IMPORTAR BASE</div><h2 class="section-title">Atualize os dados da operação</h2><p class="section-subtitle">Selecione uma planilha Excel ou CSV para iniciar a importação.</p></div></div><div class="panel-content"><div class="drop-zone ${state.importedRows?.stage===4?"hidden":state.importedRows?"drop-zone-compact":""}" id="drop-zone"><span class="upload-icon">⇧</span><strong>${state.importedRows?"Arquivo carregado para revisão":"Solte seu arquivo aqui"}</strong><p>${state.importedRows?`${escapeHtml(state.importedRows.file)} · ${(state.importedRows.size/1024/1024).toFixed(2)} MB`:"ou clique para buscar no computador"}<br><strong>Formatos aceitos: XLSX ou CSV · até 50 MB</strong></p><button class="button button-outline" data-action="choose-file">${state.importedRows?"Escolher outro arquivo":"Escolher arquivo"}</button></div><input id="import-file" class="file-input" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">${renderImportPreview()}</div></section>
+    <section class="panel"><div class="panel-head"><div><div class="section-label">REGRAS PROTEGIDAS</div><h2 class="section-title">Importar sem perder contexto</h2><p class="section-subtitle">Rastreabilidade e segurança em todas as etapas.</p></div></div><div class="panel-content"><div class="rule-list"><div class="rule-item"><span class="rule-check">✓</span><span><strong>Deduplicação pelo código do PDV</strong>Atualiza cadastros existentes sem duplicar pontos de venda.</span></div><div class="rule-item"><span class="rule-check">✓</span><span><strong>Arquivo de origem identificado</strong>O protocolo registra o nome do arquivo e o horário do processamento.</span></div><div class="rule-item"><span class="rule-check">✓</span><span><strong>Linhas rejeitadas destacadas</strong>Confira o número e o motivo de cada linha ignorada na revisão.</span></div><div class="rule-item"><span class="rule-check">✓</span><span><strong>Protocolo e trilha de auditoria</strong>Cada importação confirmada fica registrada para consulta.</span></div></div></div></section></div>
     <section class="panel" style="margin-top:12px"><div class="panel-head"><div><div class="section-label">ÚLTIMOS PROTOCOLOS</div><h2 class="section-title">Histórico recente</h2></div><button class="text-link" data-action="protocols">Ver histórico completo ↗</button></div><div class="panel-content"><div class="protocol-list">${state.protocols.slice(0,4).map(protocolRow).join("")}</div></div></section>`;
+  }
+  function renderImportPreview() {
+    const imported=state.importedRows;
+    if(!imported)return "";
+    if(imported.stage===2) {
+      const options=`<option value="-1">Não importar esta coluna</option>${imported.headers.map((header,index)=>`<option value="${index}">${escapeHtml(header||`Coluna ${index+1}`)}</option>`).join("")}`;
+      return `<div class="import-preview"><div class="import-preview-heading"><div><strong>Mapeie as colunas da planilha</strong><p>Revise as associações sugeridas; campos com * são obrigatórios.</p></div><span class="status-pill status-active">Cabeçalhos detectados</span></div><div class="mapping-grid">${importFields.map(field=>`<label class="mapping-field">${escapeHtml(field.label)}${field.required?" *":""}<select data-import-field="${field.key}">${options.replace(`value="${imported.mapping[field.key]}"`,`value="${imported.mapping[field.key]}" selected`)}</select></label>`).join("")}</div><div class="mapping-sample"><span>PRIMEIRA LINHA DE DADOS</span><div id="mapping-sample-values">${renderMappingSample(imported)}</div></div><div class="import-preview-actions"><button class="button button-outline button-small" data-action="reset-import">Cancelar</button><button class="button button-green button-small" data-action="review-import">Validar e revisar dados <span>→</span></button></div></div>`;
+    }
+    if(imported.stage===4) {
+      return `<div class="import-preview import-success"><span class="import-success-icon">✓</span><div><strong>Importação concluída com sucesso</strong><p>${escapeHtml(imported.file)} · ${countLabel(imported.newCount,"novo cliente","novos clientes")} e ${countLabel(imported.updatedCount,"registro atualizado","registros atualizados")}.${imported.rejected?` ${countLabel(imported.rejected,"linha rejeitada","linhas rejeitadas")}.`:""}</p></div><div class="import-preview-actions"><button class="button button-outline button-small" data-action="protocols">Ver protocolo</button><button class="button button-green button-small" data-action="choose-file">Importar outro arquivo</button></div></div>`;
+    }
+    return `<div class="import-preview"><div class="import-preview-heading"><div><strong>Revise os dados antes de importar</strong><p>${countLabel(imported.valid,"registro válido","registros válidos")} de ${countLabel(imported.total,"linha","linhas")}${imported.rejected?` · ${countLabel(imported.rejected,"linha rejeitada","linhas rejeitadas")} por falta de nome ou código`:""}.</p></div><span class="status-pill ${imported.rejected?"status-attention":"status-active"}">${imported.rejected?countLabel(imported.rejected,"erro","erros"):"Pronto para importar"}</span></div><div class="table-wrap import-preview-table"><table class="data-table"><thead><tr><th>PDV</th><th>CLIENTE</th><th>CIDADE</th><th>SITUAÇÃO</th></tr></thead><tbody>${imported.rows.slice(0,5).map(row=>`<tr><td>${escapeHtml(row.code)}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.city)}</td><td>${escapeHtml(row.status)}</td></tr>`).join("")}</tbody></table></div>${imported.rejectedRows?.length?`<div class="import-rejected"><strong>Linhas ignoradas</strong>${imported.rejectedRows.slice(0,5).map(row=>`<p><b>Linha ${row.line}:</b> ${row.reasons.map(escapeHtml).join(" e ")} ausente${row.reasons.length>1?"s":""}.</p>`).join("")}${imported.rejectedRows.length>5?`<p>+ ${imported.rejectedRows.length-5} outras linhas ignoradas.</p>`:""}</div>`:""}<div class="import-preview-actions"><button class="button button-outline button-small" data-action="reset-import">Cancelar</button><button class="button button-green button-small" data-action="confirm-import">Confirmar importação (${imported.valid})</button></div></div>`;
+  }
+  function renderMappingSample(imported,mapping=imported.mapping) {
+    return importFields.filter(field=>mapping[field.key]>=0).slice(0,4).map(field=>`<span><strong>${escapeHtml(field.label)}</strong>${escapeHtml(imported.rawRows[1]?.[mapping[field.key]]||"—")}</span>`).join("");
   }
   function protocolRow(item) { const errors = String(item.status).toLowerCase().includes("erro"); return `<div class="protocol-item"><span class="protocol-icon ${errors?"error":""}">${errors?"!":"✓"}</span><span class="protocol-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.detail)}</small></span><span class="protocol-status ${errors?"error":""}">${escapeHtml(item.status)}</span></div>`; }
   const auditSeed = [
@@ -357,25 +386,64 @@
   }
   function prepareImportRows(rows,file) {
     if(rows.length<2) { toast("A planilha precisa conter cabeçalho e pelo menos uma linha de dados.",true); return; }
-    const headers=rows[0].map((h)=>String(h).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim());
-    const index=(terms)=>headers.findIndex(h=>terms.some(term=>h.includes(term)));
-    const cols={name:index(["cliente","estabelecimento","razao social","nome"]),code:index(["codigo","pdv","documento","cnpj"]),city:index(["cidade","municipio"]),owner:index(["responsavel","vendedor"]),team:index(["mesa","equipe"]),status:index(["situacao","status"]),supplier:index(["fornecedor","adquirente"]),adqs:index(["adq","terminal","quantidade"]),tpv:index(["tpv","volume"])};
-    if(cols.name<0||cols.code<0) { toast("Cabeçalho inválido: inclua ao menos as colunas Cliente/Nome e Código/PDV.",true); return; }
-    const parsedRows=rows.slice(1).map((cells,i)=>{
-      const text=(column,fallback="")=>column>=0?String(cells[column]??fallback).trim():fallback;
-      const status=text(cols.status,"Aguardando primeira venda");
-      const supplier=text(cols.supplier,"Paguebank");
-      const tpvText=text(cols.tpv,"0");
-      const normalizedTpv=tpvText.replace(/[^\d,.-]/g,"").replace(/\./g,"").replace(",",".");
-      return {name:text(cols.name),code:text(cols.code),city:text(cols.city,"Não informado")||"Não informado",owner:text(cols.owner,"Sem responsável")||"Sem responsável",team:teams.some(t=>t.name===text(cols.team))?text(cols.team):"Mesa 1",status:["Ativa","Atenção","Inoperante","Aguardando primeira venda","Sem ADQ"].includes(status)?status:"Aguardando primeira venda",supplier:Object.prototype.hasOwnProperty.call(state.settings.suppliers,supplier)?supplier:"Paguebank",adqs:Math.max(0,parseInt(text(cols.adqs,"1"),10)||0),tpv:Math.max(0,Number(normalizedTpv)||0),last:"Sem uso",line:i+2};
+    const normalize=(value)=>String(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+    const headers=rows[0].map((header)=>String(header).trim());
+    const normalized=headers.map(normalize);
+    const mapping={};
+    importFields.forEach((field)=>{
+      let column=normalized.findIndex((header)=>field.aliases.some((alias)=>header===normalize(alias)));
+      if(column<0)column=normalized.findIndex((header)=>field.aliases.some((alias)=>header.includes(normalize(alias))));
+      mapping[field.key]=column;
     });
-    const data=parsedRows.filter(row=>row.code&&row.name);
-    if(!data.length) { toast("Não encontramos linhas válidas com nome e código do PDV.",true); return; }
-    const rejected=parsedRows.length-data.length;
-    state.importedRows={file:file.name,rows:data,valid:data.length,total:rows.length-1,rejected};
-    $("#import-preview").innerHTML=`<div class="panel" style="margin-top:14px;padding:12px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><strong style="font-size:10px">${escapeHtml(file.name)}</strong><p class="section-subtitle">${data.length} registros válidos de ${rows.length-1} linhas${rejected?` · ${rejected} linhas rejeitadas (nome ou código ausente)`:""}</p></div><span class="status-pill ${rejected?"status-attention":"status-active"}">${rejected?`${rejected} erros`:"Pronto para revisar"}</span></div><div class="table-wrap" style="margin-top:9px"><table class="data-table"><thead><tr><th>PDV</th><th>CLIENTE</th><th>CIDADE</th><th>STATUS</th></tr></thead><tbody>${data.slice(0,4).map(r=>`<tr><td>${escapeHtml(r.code)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.city)}</td><td>${escapeHtml(r.status)}</td></tr>`).join("")}</tbody></table></div><button class="button button-green button-small" style="margin-top:10px" data-action="confirm-import">Confirmar importação (${data.length})</button></div>`;
-    $$(".import-step").forEach((step,i)=>{step.classList.toggle("active",i<3);});
-    toast(`${data.length} registros prontos para revisão.`);
+    state.importedRows={file:file.name,size:file.size,rawRows:rows,headers,mapping,stage:2};
+    render();
+    toast("Arquivo carregado. Confirme o mapeamento das colunas.");
+  }
+  function reviewImport() {
+    const imported=state.importedRows;
+    if(!imported||imported.stage!==2)return;
+    const mapping={...imported.mapping};
+    $$(".mapping-field select").forEach((select)=>{mapping[select.dataset.importField]=Number(select.value);});
+    const required=importFields.filter(field=>field.required);
+    const missing=required.filter(field=>mapping[field.key]<0);
+    if(missing.length){toast(`Associe os campos obrigatórios: ${missing.map(field=>field.label).join(" e ")}.`,true);return;}
+    if(required.some((field,index)=>required.slice(index+1).some(other=>mapping[field.key]===mapping[other.key]))){toast("Cliente e Código do PDV precisam estar em colunas diferentes.",true);return;}
+    const read=(cells,key,fallback="")=>mapping[key]>=0?String(cells[mapping[key]]??fallback).trim():fallback;
+    const normalize=(value)=>String(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+    const statusValues=new Map(["Ativa","Atenção","Inoperante","Aguardando primeira venda","Sem ADQ"].map(value=>[normalize(value),value]));
+    const suppliers=new Map(Object.keys(state.settings.suppliers).map(value=>[normalize(value),value]));
+    const source=imported.rawRows.slice(1).map((cells,index)=>{
+      const amount=read(cells,"tpv","0").replace(/[^\d,.-]/g,"");
+      const normalizedAmount=amount.includes(",")?amount.replace(/\./g,"").replace(",","."):amount;
+      const statusInput=read(cells,"status","Aguardando primeira venda");
+      const supplierInput=read(cells,"supplier","Paguebank");
+      const teamInput=read(cells,"team","Mesa 1");
+      const matchedTeam=teams.find(team=>normalize(team.name)===normalize(teamInput));
+      const parsedAdqs=Number.parseInt(read(cells,"adqs","1").replace(/[^\d-]/g,""),10);
+      return {
+        name:read(cells,"name"), code:read(cells,"code"), city:read(cells,"city","Não informado")||"Não informado",
+        owner:read(cells,"owner","Sem responsável")||"Sem responsável", team:matchedTeam?.name||"Mesa 1",
+        status:statusValues.get(normalize(statusInput))||"Aguardando primeira venda",
+        supplier:suppliers.get(normalize(supplierInput))||"Paguebank",
+        adqs:Number.isFinite(parsedAdqs)?Math.max(0,parsedAdqs):0,
+        tpv:Math.max(0,Number(normalizedAmount)||0),
+        last:read(cells,"last","Sem uso")||"Sem uso", line:index+2
+      };
+    });
+    const data=source.filter(row=>row.code&&row.name);
+    if(!data.length){toast("Não encontramos linhas válidas. Revise as colunas de Cliente e Código do PDV.",true);return;}
+    imported.mapping=mapping;
+    imported.rows=data;
+    imported.valid=data.length;
+    imported.total=source.length;
+    imported.rejected=source.length-data.length;
+    imported.rejectedRows=source.filter(row=>!row.code||!row.name).map(row=>({
+      line:row.line,
+      reasons:[...(!row.name?["Nome"]:[]),...(!row.code?["Código do PDV"]:[])]
+    }));
+    imported.stage=3;
+    render();
+    toast(`${countLabel(data.length,"registro válido","registros válidos")}; confira a prévia antes de confirmar.`);
   }
   function parseImportFile(file) {
     if(!file||!/\.(csv|xlsx)$/i.test(file.name)){toast("Formato não suportado. Selecione um arquivo CSV ou XLSX.",true);return;}
@@ -393,21 +461,26 @@
     if(file.name.toLowerCase().endsWith(".xlsx"))reader.readAsArrayBuffer(file);else reader.readAsText(file);
   }
   function confirmImport() {
-    if(!state.importedRows) return;
+    if(!state.importedRows||state.importedRows.stage!==3){toast("Revise e valide os dados antes de confirmar a importação.",true);return;}
     const imported=state.importedRows;
     const before=clientRows();
     const known=new Set(before.map(c=>c.code));
     const newCount=imported.rows.filter(row=>!known.has(row.code)).length;
+    const updatedCount=imported.valid-newCount;
     const merged=new Map(before.map((client)=>[client.code,client]));
     imported.rows.forEach((row)=>merged.set(row.code,{...merged.get(row.code),...row}));
     state.extraClients=[...merged.values()];
     save("rvadq.clients",state.extraClients);
     const now=new Date().toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
-    state.protocols.unshift({name:imported.file,detail:`${now} · ${imported.total} linhas`,status:`${imported.valid-newCount} atualizados · ${newCount} novos${imported.rejected?` · ${imported.rejected} erros`:""}`});
+    state.protocols.unshift({name:imported.file,detail:`${now} · ${countLabel(imported.total,"linha","linhas")}`,status:`${countLabel(updatedCount,"atualizado","atualizados")} · ${countLabel(newCount,"novo","novos")}${imported.rejected?` · ${countLabel(imported.rejected,"erro","erros")}`:""}`});
     save("rvadq.protocols",state.protocols);
-    addAudit("Importação concluída",`${imported.file} · ${newCount} novos, ${imported.valid-newCount} atualizados e ${imported.rejected||0} rejeitados`);
-    state.importedRows=null;
-    toast(`Importação concluída: ${newCount} novos clientes e ${imported.valid-newCount} atualizados.`);
+    addAudit("Importação concluída",`${imported.file} · ${countLabel(newCount,"novo registro","novos registros")}, ${countLabel(updatedCount,"registro atualizado","registros atualizados")} e ${countLabel(imported.rejected||0,"linha rejeitada","linhas rejeitadas")}`);
+    imported.newCount=newCount;
+    imported.updatedCount=updatedCount;
+    imported.stage=4;
+    imported.rows=[];
+    imported.rawRows=[];
+    toast(`Importação concluída: ${countLabel(newCount,"novo cliente","novos clientes")} e ${countLabel(updatedCount,"registro atualizado","registros atualizados")}.`);
     render();
   }
   function exportCsv(filename, headers, rows) {
@@ -476,6 +549,8 @@
     else if(action==="export-health") exportCsv("saude-da-base-rv-digital.csv",["Cliente","Código PDV","Cidade","Responsável","Situação"],clientRows().map(c=>[c.name,c.code,c.city,c.owner,c.status]));
     else if(action==="page"){state.page=Math.max(1,Math.min(Math.ceil(filteredClients().length/state.pageSize),state.page+Number(element.dataset.direction)));render();}
     else if(action==="import"||action==="choose-file") { if(state.route!=="imports") navigate("imports"); window.setTimeout(()=>$("#import-file")?.click(),50); }
+    else if(action==="review-import") reviewImport();
+    else if(action==="reset-import"){state.importedRows=null;render();}
     else if(action==="confirm-import") confirmImport();
     else if(action==="protocols") openProtocolModal();
     else if(action==="save-settings") saveSettings();
@@ -517,7 +592,15 @@
   });
   document.addEventListener("change",(event)=>{
     const target=event.target;
-    if(target.id==="team-filter"||target.id==="table-team"){state.team=target.value;state.page=1;render();}
+    if(target.matches("[data-import-field]")){
+      const imported=state.importedRows;
+      if(imported?.stage===2){
+        const mapping={...imported.mapping};
+        $$(".mapping-field select").forEach(select=>mapping[select.dataset.importField]=Number(select.value));
+        $("#mapping-sample-values").innerHTML=renderMappingSample(imported,mapping);
+      }
+    }
+    else if(target.id==="team-filter"||target.id==="table-team"){state.team=target.value;state.page=1;render();}
     else if(target.id==="date-filter"){state.period=target.value;toast(target.options[target.selectedIndex].text+" selecionado.");}
     else if(target.id==="supplier-filter"){state.supplier=target.value;state.page=1;render();}
     else if(target.id==="status-filter"){state.status=target.value;state.page=1;render();}
